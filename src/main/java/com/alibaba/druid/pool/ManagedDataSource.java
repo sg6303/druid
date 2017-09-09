@@ -17,7 +17,11 @@ package com.alibaba.druid.pool;
 
 import javax.management.ObjectName;
 import javax.sql.DataSource;
-
+/**
+ * 管理数据源接口
+ * @author Administrator
+ *
+ */
 public interface ManagedDataSource extends DataSource {
 
     boolean isEnable();

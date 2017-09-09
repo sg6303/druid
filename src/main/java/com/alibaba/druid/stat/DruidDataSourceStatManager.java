@@ -58,6 +58,16 @@ public class DruidDataSourceStatManager implements DruidDataSourceStatManagerMBe
     private final AtomicLong                        resetCount                     = new AtomicLong();
 
     // global instances
+    /**
+     * 一旦一个共享变量（类的成员变量、类的静态成员变量）被volatile修饰之后，那么就具备了两层语义：<br>
+		1）保证了不同线程对这个变量进行操作时的可见性，即一个线程修改了某个变量的值，这新值对其他线程来说是立即可见的。<br>
+		2）禁止进行指令重排序。
+		
+		synchronized关键字是防止多个线程同时执行一段代码，那么就会很影响程序执行效率，而volatile关键字在某些情况下性能要优于synchronized，
+		但是要注意volatile关键字是无法替代synchronized关键字的，因为volatile关键字无法保证操作的原子性。通常来说，使用volatile必须具备以下2个条件：
+		1）对变量的写操作不依赖于当前值
+		2）该变量没有包含在具有其他变量的不变式中
+     */
     private static volatile Map                     dataSources;
 
     private final static String                     MBEAN_NAME                     = "com.alibaba.druid:type=DruidDataSourceStat";
@@ -137,6 +147,12 @@ public class DruidDataSourceStatManager implements DruidDataSourceStatManagerMBe
         return instances;
     }
 
+    /**
+     * 将新的数据源添加到数据源状态管理里面
+     * @param dataSource
+     * @param name
+     * @return
+     */
     public synchronized static ObjectName addDataSource(Object dataSource, String name) {
         final Map<Object, ObjectName> instances = getInstances();
 

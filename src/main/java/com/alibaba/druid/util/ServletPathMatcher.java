@@ -24,11 +24,15 @@ public class ServletPathMatcher implements PatternMatcher {
 	}
 
 	/**
+	 * 判断是否匹配
 	 * <p>
 	 * three type: endsWithMatch(eg. /xxx*=/xxx/xyz), startsWithMatch(eg.
 	 * *.xxx=abc.xxx), equals(eg. /xxx=/xxx).
 	 * </p>
 	 * <b>Notice</b>: *xxx* will match *xxxyyyy. endsWithMatch first.
+	 * 
+	 * @param pattern 正则表达式
+	 * @param source 呆比对的字符串
 	 */
 	@Override
 	public boolean matches(String pattern, String source) {
@@ -37,6 +41,7 @@ public class ServletPathMatcher implements PatternMatcher {
 		}
 		pattern = pattern.trim();
 		source = source.trim();
+		
 		if (pattern.endsWith("*")) {
 			// pattern: /druid* source:/druid/index.html
 			int length = pattern.length() - 1;

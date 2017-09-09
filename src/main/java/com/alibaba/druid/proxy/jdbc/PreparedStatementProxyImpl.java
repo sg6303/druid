@@ -179,7 +179,7 @@ public class PreparedStatementProxyImpl extends StatementProxyImpl implements Pr
         lastExecuteStartNano = -1L;
         lastExecuteTimeNano = -1L;
 
-        return createChain().preparedStatement_executeQuery(this);
+        return createChain().preparedStatement_executeQuery(this); //产生过滤链，并由过滤链执行。 
     }
 
     @Override

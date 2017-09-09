@@ -52,278 +52,308 @@ import com.alibaba.druid.util.JdbcUtils;
  */
 public class DruidDriver implements Driver, DruidDriverMBean {
 
-    private static Log                                              LOG; // lazy init
+	private static Log LOG; // lazy init
 
-    private final static DruidDriver                                instance                 = new DruidDriver();
+	private final static DruidDriver instance = new DruidDriver();
 
-    private final static ConcurrentMap<String, DataSourceProxyImpl> proxyDataSources         = new ConcurrentHashMap<String, DataSourceProxyImpl>(16, 0.75f, 1);
-    private final static AtomicInteger                              dataSourceIdSeed         = new AtomicInteger(0);
-    private final static AtomicInteger                              sqlStatIdSeed            = new AtomicInteger(0);
+	private final static ConcurrentMap<String, DataSourceProxyImpl> proxyDataSources = new ConcurrentHashMap<String, DataSourceProxyImpl>(
+			16, 0.75f, 1);
+	//可以用原子方式更新的 int 值
+	private final static AtomicInteger dataSourceIdSeed = new AtomicInteger(0);
+	private final static AtomicInteger sqlStatIdSeed = new AtomicInteger(0);
 
-    public final static String                                      DEFAULT_PREFIX           = "jdbc:wrap-jdbc:";
-    public final static String                                      DRIVER_PREFIX            = "driver=";
-    public final static String                                      PASSWORD_CALLBACK_PREFIX = "passwordCallback=";
-    public final static String                                      NAME_PREFIX              = "name=";
-    public final static String                                      JMX_PREFIX               = "jmx=";
-    public final static String                                      FILTERS_PREFIX           = "filters=";
+	public final static String DEFAULT_PREFIX = "jdbc:wrap-jdbc:";
+	public final static String DRIVER_PREFIX = "driver=";
+	public final static String PASSWORD_CALLBACK_PREFIX = "passwordCallback=";
+	public final static String NAME_PREFIX = "name=";
+	public final static String JMX_PREFIX = "jmx=";
+	public final static String FILTERS_PREFIX = "filters=";
 
-    private final AtomicLong                                        connectCount             = new AtomicLong(0);
+	private final AtomicLong connectCount = new AtomicLong(0);
 
-    private String                                                  acceptPrefix             = DEFAULT_PREFIX;
+	private String acceptPrefix = DEFAULT_PREFIX;
 
-    private int                                                     majorVersion             = 4;
+	private int majorVersion = 4;
 
-    private int                                                     minorVersion             = 0;
+	private int minorVersion = 0;
 
-    private final static String                                     MBEAN_NAME               = "com.alibaba.druid:type=DruidDriver";
+	private final static String MBEAN_NAME = "com.alibaba.druid:type=DruidDriver";
 
-    static {
-        AccessController.doPrivileged(new PrivilegedAction<Object>() {
-            @Override
-            public Object run() {
-                registerDriver(instance);
-                return null;
-            }
-        });
-    }
+	static {
+		AccessController.doPrivileged(new PrivilegedAction<Object>() {
+			@Override
+			public Object run() {
+				registerDriver(instance);
+				return null;
+			}
+		});
+	}
 
-    public static boolean registerDriver(Driver driver) {
-        try {
-            DriverManager.registerDriver(driver);
+	public static boolean registerDriver(Driver driver) {
+		try {
+			DriverManager.registerDriver(driver);
 
-            try {
-                MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
+			try {
+				MBeanServer mbeanServer = ManagementFactory
+						.getPlatformMBeanServer();
 
-                ObjectName objectName = new ObjectName(MBEAN_NAME);
-                if (!mbeanServer.isRegistered(objectName)) {
-                    mbeanServer.registerMBean(instance, objectName);
-                }
-            } catch (Throwable ex) {
-                if (LOG == null) {
-                    LOG = LogFactory.getLog(DruidDriver.class);
-                }
-                LOG.warn("register druid-driver mbean error", ex);
-            }
+				ObjectName objectName = new ObjectName(MBEAN_NAME);
+				if (!mbeanServer.isRegistered(objectName)) {
+					mbeanServer.registerMBean(instance, objectName);
+				}
+			} catch (Throwable ex) {
+				if (LOG == null) {
+					LOG = LogFactory.getLog(DruidDriver.class);
+				}
+				LOG.warn("register druid-driver mbean error", ex);
+			}
 
-            return true;
-        } catch (Exception e) {
-            if (LOG == null) {
-                LOG = LogFactory.getLog(DruidDriver.class);
-            }
-            
-            LOG.error("registerDriver error", e);
-        }
+			return true;
+		} catch (Exception e) {
+			if (LOG == null) {
+				LOG = LogFactory.getLog(DruidDriver.class);
+			}
 
-        return false;
-    }
+			LOG.error("registerDriver error", e);
+		}
 
-    public DruidDriver(){
+		return false;
+	}
 
-    }
+	public DruidDriver() {
 
-    public static DruidDriver getInstance() {
-        return instance;
-    }
+	}
 
-    public static int createDataSourceId() {
-        return dataSourceIdSeed.incrementAndGet();
-    }
+	public static DruidDriver getInstance() {
+		return instance;
+	}
 
-    public static int createSqlStatId() {
-        return sqlStatIdSeed.incrementAndGet();
-    }
+	/**
+	 * 以原子方式将当前值加 1。 并返回增加后的值
+	 * @return
+	 */
+	public static int createDataSourceId() {
+		return dataSourceIdSeed.incrementAndGet();
+	}
 
-    @Override
-    public boolean acceptsURL(String url) throws SQLException {
-        if (url == null) {
-            return false;
-        }
+	public static int createSqlStatId() {
+		return sqlStatIdSeed.incrementAndGet();
+	}
 
-        if (url.startsWith(acceptPrefix)) {
-            return true;
-        }
+	@Override
+	public boolean acceptsURL(String url) throws SQLException {
+		if (url == null) {
+			return false;
+		}
 
-        return false;
-    }
+		if (url.startsWith(acceptPrefix)) {
+			return true;
+		}
 
-    @Override
-    public Connection connect(String url, Properties info) throws SQLException {
-        if (!acceptsURL(url)) {
-            return null;
-        }
+		return false;
+	}
 
-        connectCount.incrementAndGet();
+	@Override
+	public Connection connect(String url, Properties info) throws SQLException {
+		if (!acceptsURL(url)) {
+			return null;
+		}
 
-        DataSourceProxyImpl dataSource = getDataSource(url, info);
+		connectCount.incrementAndGet();
 
-        return dataSource.connect(info);
-    }
+		DataSourceProxyImpl dataSource = getDataSource(url, info);
 
-    /**
-     * 参数定义： com.alibaba.druid.log.LogFilter=filter com.alibaba.druid.log.LogFilter.p1=prop-value
-     * com.alibaba.druid.log.LogFilter.p2=prop-value
-     * 
-     * @param url
-     * @return
-     * @throws SQLException
-     */
-    private DataSourceProxyImpl getDataSource(String url, Properties info) throws SQLException {
-        DataSourceProxyImpl dataSource = proxyDataSources.get(url);
+		return dataSource.connect(info);
+	}
 
-        if (dataSource == null) {
-            DataSourceProxyConfig config = parseConfig(url, info);
+	/**
+	 * 参数定义： com.alibaba.druid.log.LogFilter=filter
+	 * com.alibaba.druid.log.LogFilter.p1=prop-value
+	 * com.alibaba.druid.log.LogFilter.p2=prop-value
+	 * 
+	 * @param url
+	 * @return
+	 * @throws SQLException
+	 */
+	private DataSourceProxyImpl getDataSource(String url, Properties info)
+			throws SQLException {
+		DataSourceProxyImpl dataSource = proxyDataSources.get(url);
 
-            Driver rawDriver = createDriver(config.getRawDriverClassName());
+		if (dataSource == null) {
+			DataSourceProxyConfig config = parseConfig(url, info);
 
-            DataSourceProxyImpl newDataSource = new DataSourceProxyImpl(rawDriver, config);
+			Driver rawDriver = createDriver(config.getRawDriverClassName());
 
-            {
-                String property = System.getProperty("druid.filters");
-                if (property != null && property.length() > 0) {
-                    for (String filterItem : property.split(",")) {
-                        FilterManager.loadFilter(config.getFilters(), filterItem);
-                    }
-                }
-            }
-            {
-                int dataSourceId = createDataSourceId();
-                newDataSource.setId(dataSourceId);
+			DataSourceProxyImpl newDataSource = new DataSourceProxyImpl(
+					rawDriver, config);
 
-                for (Filter filter : config.getFilters()) {
-                    filter.init(newDataSource);
-                }
-            }
+			{
+				String property = System.getProperty("druid.filters");
+				if (property != null && property.length() > 0) {
+					for (String filterItem : property.split(",")) {
+						FilterManager.loadFilter(config.getFilters(),
+								filterItem);
+					}
+				}
+			}
+			{
+				int dataSourceId = createDataSourceId();
+				newDataSource.setId(dataSourceId);
 
-            DataSourceProxy oldDataSource = proxyDataSources.putIfAbsent(url, newDataSource);
-            if (oldDataSource == null) {
-                if (config.isJmxOption()) {
-                    JMXUtils.register("com.alibaba.druid:type=JdbcStat", JdbcStatManager.getInstance());
-                }
-            }
+				for (Filter filter : config.getFilters()) {
+					filter.init(newDataSource);
+				}
+			}
 
-            dataSource = proxyDataSources.get(url);
-        }
-        return dataSource;
-    }
+			DataSourceProxy oldDataSource = proxyDataSources.putIfAbsent(url,
+					newDataSource);
+			if (oldDataSource == null) {
+				if (config.isJmxOption()) {
+					JMXUtils.register("com.alibaba.druid:type=JdbcStat",
+							JdbcStatManager.getInstance());
+				}
+			}
 
-    public static DataSourceProxyConfig parseConfig(String url, Properties info) throws SQLException {
-        String restUrl = url.substring(DEFAULT_PREFIX.length());
+			dataSource = proxyDataSources.get(url);
+		}
+		return dataSource;
+	}
 
-        DataSourceProxyConfig config = new DataSourceProxyConfig();
+	/**
+	 * 根据jdbcUrl 和 配置新 获取数据源代理配置信息
+	 * @param url
+	 * @param info
+	 * @return
+	 * @throws SQLException
+	 */
+	public static DataSourceProxyConfig parseConfig(String url, Properties info)
+			throws SQLException {
+		String restUrl = url.substring(DEFAULT_PREFIX.length());
 
-        if (restUrl.startsWith(DRIVER_PREFIX)) {
-            int pos = restUrl.indexOf(':', DRIVER_PREFIX.length());
-            String driverText = restUrl.substring(DRIVER_PREFIX.length(), pos);
-            if (driverText.length() > 0) {
-                config.setRawDriverClassName(driverText.trim());
-            }
-            restUrl = restUrl.substring(pos + 1);
-        }
+		DataSourceProxyConfig config = new DataSourceProxyConfig();
 
-        if (restUrl.startsWith(FILTERS_PREFIX)) {
-            int pos = restUrl.indexOf(':', FILTERS_PREFIX.length());
-            String filtersText = restUrl.substring(FILTERS_PREFIX.length(), pos);
-            for (String filterItem : filtersText.split(",")) {
-                FilterManager.loadFilter(config.getFilters(), filterItem);
-            }
-            restUrl = restUrl.substring(pos + 1);
-        }
+		if (restUrl.startsWith(DRIVER_PREFIX)) {
+			int pos = restUrl.indexOf(':', DRIVER_PREFIX.length());
+			String driverText = restUrl.substring(DRIVER_PREFIX.length(), pos);
+			if (driverText.length() > 0) {
+				config.setRawDriverClassName(driverText.trim());
+			}
+			restUrl = restUrl.substring(pos + 1);
+		}
 
-        if (restUrl.startsWith(NAME_PREFIX)) {
-            int pos = restUrl.indexOf(':', NAME_PREFIX.length());
-            String name = restUrl.substring(NAME_PREFIX.length(), pos);
-            config.setName(name);
-            restUrl = restUrl.substring(pos + 1);
-        }
+		if (restUrl.startsWith(FILTERS_PREFIX)) {
+			int pos = restUrl.indexOf(':', FILTERS_PREFIX.length());
+			String filtersText = restUrl
+					.substring(FILTERS_PREFIX.length(), pos);
+			for (String filterItem : filtersText.split(",")) {
+				FilterManager.loadFilter(config.getFilters(), filterItem);
+			}
+			restUrl = restUrl.substring(pos + 1);
+		}
 
-        if (restUrl.startsWith(JMX_PREFIX)) {
-            int pos = restUrl.indexOf(':', JMX_PREFIX.length());
-            String jmxOption = restUrl.substring(JMX_PREFIX.length(), pos);
-            config.setJmxOption(jmxOption);
-            restUrl = restUrl.substring(pos + 1);
-        }
+		if (restUrl.startsWith(NAME_PREFIX)) {
+			int pos = restUrl.indexOf(':', NAME_PREFIX.length());
+			String name = restUrl.substring(NAME_PREFIX.length(), pos);
+			config.setName(name);
+			restUrl = restUrl.substring(pos + 1);
+		}
 
-        String rawUrl = restUrl;
-        config.setRawUrl(rawUrl);
+		if (restUrl.startsWith(JMX_PREFIX)) {
+			int pos = restUrl.indexOf(':', JMX_PREFIX.length());
+			String jmxOption = restUrl.substring(JMX_PREFIX.length(), pos);
+			config.setJmxOption(jmxOption);
+			restUrl = restUrl.substring(pos + 1);
+		}
 
-        if (config.getRawDriverClassName() == null) {
-            String rawDriverClassname = JdbcUtils.getDriverClassName(rawUrl);
-            config.setRawDriverClassName(rawDriverClassname);
-        }
+		String rawUrl = restUrl;
+		config.setRawUrl(rawUrl);
 
-        config.setUrl(url);
-        return config;
-    }
+		if (config.getRawDriverClassName() == null) {
+			String rawDriverClassname = JdbcUtils.getDriverClassName(rawUrl);
+			config.setRawDriverClassName(rawDriverClassname);
+		}
 
-    public Driver createDriver(String className) throws SQLException {
-        Class<?> rawDriverClass = Utils.loadClass(className);
+		config.setUrl(url);
+		return config;
+	}
 
-        if (rawDriverClass == null) {
-            throw new SQLException("jdbc-driver's class not found. '" + className + "'");
-        }
+	public Driver createDriver(String className) throws SQLException {
+		Class<?> rawDriverClass = Utils.loadClass(className);
 
-        Driver rawDriver;
-        try {
-            rawDriver = (Driver) rawDriverClass.newInstance();
-        } catch (InstantiationException e) {
-            throw new SQLException("create driver instance error, driver className '" + className + "'", e);
-        } catch (IllegalAccessException e) {
-            throw new SQLException("create driver instance error, driver className '" + className + "'", e);
-        }
+		if (rawDriverClass == null) {
+			throw new SQLException("jdbc-driver's class not found. '"
+					+ className + "'");
+		}
 
-        return rawDriver;
-    }
+		Driver rawDriver;
+		try {
+			rawDriver = (Driver) rawDriverClass.newInstance();
+		} catch (InstantiationException e) {
+			throw new SQLException(
+					"create driver instance error, driver className '"
+							+ className + "'", e);
+		} catch (IllegalAccessException e) {
+			throw new SQLException(
+					"create driver instance error, driver className '"
+							+ className + "'", e);
+		}
 
-    @Override
-    public int getMajorVersion() {
-        return this.majorVersion;
-    }
+		return rawDriver;
+	}
 
-    @Override
-    public int getMinorVersion() {
-        return this.minorVersion;
-    }
+	@Override
+	public int getMajorVersion() {
+		return this.majorVersion;
+	}
 
-    @Override
-    public DriverPropertyInfo[] getPropertyInfo(String url, Properties info) throws SQLException {
-        DataSourceProxyImpl dataSource = getDataSource(url, info);
-        return dataSource.getRawDriver().getPropertyInfo(dataSource.getConfig().getRawUrl(), info);
-    }
+	@Override
+	public int getMinorVersion() {
+		return this.minorVersion;
+	}
 
-    @Override
-    public boolean jdbcCompliant() {
-        return true;
-    }
+	@Override
+	public DriverPropertyInfo[] getPropertyInfo(String url, Properties info)
+			throws SQLException {
+		DataSourceProxyImpl dataSource = getDataSource(url, info);
+		return dataSource.getRawDriver().getPropertyInfo(
+				dataSource.getConfig().getRawUrl(), info);
+	}
 
-    @Override
-    public long getConnectCount() {
-        return connectCount.get();
-    }
+	@Override
+	public boolean jdbcCompliant() {
+		return true;
+	}
 
-    public String getAcceptPrefix() {
-        return acceptPrefix;
-    }
+	@Override
+	public long getConnectCount() {
+		return connectCount.get();
+	}
 
-    @Override
-    public String[] getDataSourceUrls() {
-        return proxyDataSources.keySet().toArray(new String[proxyDataSources.size()]);
-    }
+	public String getAcceptPrefix() {
+		return acceptPrefix;
+	}
 
-    public static ConcurrentMap<String, DataSourceProxyImpl> getProxyDataSources() {
-        return proxyDataSources;
-    }
+	@Override
+	public String[] getDataSourceUrls() {
+		return proxyDataSources.keySet().toArray(
+				new String[proxyDataSources.size()]);
+	}
 
-    public Logger getParentLogger() throws SQLFeatureNotSupportedException {
-        throw new SQLFeatureNotSupportedException();
-    }
+	public static ConcurrentMap<String, DataSourceProxyImpl> getProxyDataSources() {
+		return proxyDataSources;
+	}
 
-    @Override
-    public void resetStat() {
-        connectCount.set(0);
-    }
+	public Logger getParentLogger() throws SQLFeatureNotSupportedException {
+		throw new SQLFeatureNotSupportedException();
+	}
 
-    @Override
-    public String getDruidVersion() {
-        return VERSION.getVersionNumber();
-    }
+	@Override
+	public void resetStat() {
+		connectCount.set(0);
+	}
+
+	@Override
+	public String getDruidVersion() {
+		return VERSION.getVersionNumber();
+	}
 }

@@ -17,7 +17,11 @@ package com.alibaba.druid.util;
 
 import java.util.ArrayList;
 import java.util.List;
-
+/**
+ * 事务信息 类
+ * @author Administrator
+ *
+ */
 public class TransactionInfo {
 
     private final long         id;

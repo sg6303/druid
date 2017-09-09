@@ -18,6 +18,11 @@ package com.alibaba.druid.util;
 import javax.security.auth.callback.PasswordCallback;
 import java.util.Properties;
 
+/**
+ * druid密码回调类
+ * @author Administrator
+ *
+ */
 public class DruidPasswordCallback extends PasswordCallback {
 
     private static final long serialVersionUID = 1L;

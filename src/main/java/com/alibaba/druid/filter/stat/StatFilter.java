@@ -261,6 +261,10 @@ public class StatFilter extends FilterEventAdapter implements StatFilterMBean {
         // duplicate close, C3P0等连接池，在某些情况下会关闭连接多次。
     }
 
+    /**
+     * 先是让chain去作一步（就是nextFilter开始干活，所有的filter都干完了，就真正commit一下）然后，对数据源的commit的操作计数进行增加<br>
+     * 原来执行一个数据库操作，现在给代理类执行，执行中先经过一个个过滤器进行统计，之后再真正执行数据库操作。对最终用户透明的
+     */
     @Override
     public void connection_commit(FilterChain chain, ConnectionProxy connection) throws SQLException {
         chain.connection_commit(connection);

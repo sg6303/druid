@@ -370,6 +370,12 @@ public final class JdbcUtils implements JdbcConstants {
         }
     }
 
+    /**
+     * 根据jdbc的链接url获取驱动类名
+     * @param rawUrl
+     * @return
+     * @throws SQLException
+     */
     public static String getDriverClassName(String rawUrl) throws SQLException {
         if (rawUrl == null) {
             return null;
@@ -467,6 +473,12 @@ public final class JdbcUtils implements JdbcConstants {
         }
     }
 
+    /**
+     * 根据jdbc的链接url获取数据库类型
+     * @param rawUrl
+     * @param driverClassName  这个参数暂时没用，可能后续可以根据 驱动类来判断数据库类型
+     * @return
+     */
     public static String getDbType(String rawUrl, String driverClassName) {
         if (rawUrl == null) {
             return null;
@@ -556,6 +568,13 @@ public final class JdbcUtils implements JdbcConstants {
         return createDriver(null, driverClassName);
     }
 
+    /**
+     * 根据驱动类名和驱动类的加载类  初始化驱动类
+     * @param classLoader
+     * @param driverClassName
+     * @return
+     * @throws SQLException
+     */
     public static Driver createDriver(ClassLoader classLoader, String driverClassName) throws SQLException {
         Class<?> clazz = null;
         if (classLoader != null) {

@@ -205,6 +205,14 @@ public class MySqlUtils {
         return getCreateTableScript(conn, true, true);
     }
 
+    /**
+     * 拿到这个链接的数据库的创建表的所有脚本
+     * @param conn
+     * @param sorted
+     * @param simplify
+     * @return
+     * @throws SQLException
+     */
     public static String getCreateTableScript(Connection conn, boolean sorted, boolean simplify) throws SQLException {
         List<String> tables = showTables(conn);
         List<String> ddlList = getTableDDL(conn, tables);

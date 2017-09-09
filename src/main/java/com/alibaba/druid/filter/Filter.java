@@ -57,6 +57,7 @@ import java.util.Properties;
 import java.util.concurrent.Executor;
 
 /**
+ * 定义了过滤器需要关注的事件，以及可以处理的事件
  * @author wenshao [szujobs@hotmail.com]
  */
 public interface Filter extends Wrapper {

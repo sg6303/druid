@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class JdbcStatementStat implements JdbcStatementStatMBean {
 
+	//AtomicLong=====>可以用原子方式更新的 long 值
     private final AtomicLong    createCount      = new AtomicLong(0);                                     // 执行createStatement的计数
     private final AtomicLong    prepareCount     = new AtomicLong(0);                                     // 执行parepareStatement的计数
     private final AtomicLong    prepareCallCount = new AtomicLong(0);                                     // 执行preCall的计数

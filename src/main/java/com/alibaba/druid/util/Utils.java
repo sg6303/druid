@@ -50,8 +50,7 @@ public class Utils {
                 return null;
             }
 
-            String text = Utils.read(in);
-            return text;
+            return read(in);
         } finally {
             JdbcUtils.close(in);
         }
@@ -418,6 +417,11 @@ public class Utils {
         return FnvHash.fnv_32_lower(key);
     }
 
+    /**
+     * 将配置文件的内容加载到 set里面
+     * @param path
+     * @param set
+     */
     public static void loadFromFile(String path, Set<String> set) {
         InputStream is = null;
         BufferedReader reader = null;

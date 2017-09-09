@@ -67,6 +67,7 @@ import com.alibaba.druid.proxy.jdbc.StatementProxy;
 import com.alibaba.druid.proxy.jdbc.StatementProxyImpl;
 
 /**
+ * 过滤链
  * @author wenshao [szujobs@hotmail.com]
  */
 public class FilterChainImpl implements FilterChain {
@@ -138,6 +139,10 @@ public class FilterChainImpl implements FilterChain {
         return wrapper.unwrap(iface);
     }
 
+    /**
+     * 过滤链上 执行所有过滤器之后才提交创建链接<br>
+     * 而返回的链接对象是 链接的代理
+     */
     public ConnectionProxy connection_connect(Properties info) throws SQLException {
         if (this.pos < filterSize) {
             return nextFilter().connection_connect(this, info);
@@ -183,7 +188,7 @@ public class FilterChainImpl implements FilterChain {
             return;
         }
 
-        connection.getRawObject().commit();
+        connection.getRawObject().commit(); ////都干完了，才真正提交。这个连接也是一个代理，让里面真正的java.sql.connection提交。  
     }
 
     @Override
@@ -2821,6 +2826,9 @@ public class FilterChainImpl implements FilterChain {
 
     // ////////////////
 
+    /**
+     * 在执行查询前，要经过过滤链处理，等处理完了，再由statement执行，执行完了，得到一个ResultSet后，包装一个产生最后返回的代理类
+     */
     @Override
     public ResultSetProxy preparedStatement_executeQuery(PreparedStatementProxy statement) throws SQLException {
         if (this.pos < filterSize) {

@@ -17,7 +17,11 @@ package com.alibaba.druid.pool;
 
 import java.util.Date;
 import java.util.List;
-
+/**
+ * 抽象数据源Bean接口。主要是配置的获取
+ * @author Administrator
+ *
+ */
 public interface DruidAbstractDataSourceMBean {
 
     int getLoginTimeout();
@@ -34,12 +38,24 @@ public interface DruidAbstractDataSourceMBean {
 
     String getDriverClassName();
 
+    /**
+     * 链接数
+     * @return
+     */
     long getConnectCount();
 
+    /**
+     * 关闭数
+     * @return
+     */
     long getCloseCount();
 
     long getConnectErrorCount();
 
+    /**
+     * 在连接池里的总数
+     * @return
+     */
     int getPoolingCount();
 
     long getRecycleCount();

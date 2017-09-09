@@ -41,6 +41,12 @@ import com.alibaba.druid.util.JdbcUtils;
 
 public class SQLParserUtils {
 
+	/**
+	 * 根据不同数据库创建 执行sql语句的statement的解析器
+	 * @param sql
+	 * @param dbType
+	 * @return
+	 */
     public static SQLStatementParser createSQLStatementParser(String sql, String dbType) {
         boolean keepComments;
         if (JdbcConstants.ODPS.equals(dbType) || JdbcConstants.MYSQL.equals(dbType)) {
@@ -51,6 +57,13 @@ public class SQLParserUtils {
         return createSQLStatementParser(sql, dbType, keepComments);
     }
 
+    /**
+     * 不同数据库的执行sql语句的方言脚本
+     * @param sql sql语句
+     * @param dbType 数据库类型：oracle\mysql 等
+     * @param keepComments 
+     * @return
+     */
     public static SQLStatementParser createSQLStatementParser(String sql, String dbType, boolean keepComments) {
         if (JdbcUtils.ORACLE.equals(dbType) || JdbcUtils.ALI_ORACLE.equals(dbType)) {
             return new OracleStatementParser(sql);
@@ -64,8 +77,7 @@ public class SQLParserUtils {
             return new MySqlStatementParser(sql, keepComments);
         }
 
-        if (JdbcUtils.POSTGRESQL.equals(dbType)
-                || JdbcUtils.ENTERPRISEDB.equals(dbType)) {
+        if (JdbcUtils.POSTGRESQL.equals(dbType) || JdbcUtils.ENTERPRISEDB.equals(dbType)) {
             return new PGSQLStatementParser(sql);
         }
 

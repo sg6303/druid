@@ -20,6 +20,14 @@ import java.util.Properties;
 
 public interface ValidConnectionChecker {
 
+	/**
+	 * 不同的数据库的检验 链接的有效性的接口方法
+	 * @param c
+	 * @param query
+	 * @param validationQueryTimeout
+	 * @return
+	 * @throws Exception
+	 */
     boolean isValidConnection(Connection c, String query, int validationQueryTimeout) throws Exception;
     
     /**

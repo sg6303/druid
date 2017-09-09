@@ -21,6 +21,7 @@ import java.util.Date;
 import javax.management.ObjectName;
 
 /**
+ * 数据源Bean接口
  * @author wenshao [szujobs@hotmail.com]
  */
 public interface DruidDataSourceMBean extends DruidAbstractDataSourceMBean {

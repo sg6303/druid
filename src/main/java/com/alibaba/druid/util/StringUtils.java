@@ -19,6 +19,7 @@ import com.alibaba.druid.support.logging.Log;
 import com.alibaba.druid.support.logging.LogFactory;
 
 /**
+ * 字符串工具类
  * @author sandzhang[sandzhangtoo@gmail.com]
  */
 public class StringUtils {
